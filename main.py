@@ -12,8 +12,8 @@ from flask_limiter.util import get_remote_address
 import json
 import sqlite3
 import shutil
-from apscheduler.schedulers.background import BackgroundScheduler
-from apscheduler.triggers.cron import CronTrigger
+# from apscheduler.schedulers.background import BackgroundScheduler
+# from apscheduler.triggers.cron import CronTrigger
 from sqlalchemy.sql import func
 
 app = Flask(__name__)
@@ -47,9 +47,9 @@ BACKUP_DIR = 'backups'
 if not os.path.exists(BACKUP_DIR):
     os.makedirs(BACKUP_DIR)
 
-# 백업 스케줄러 설정
-scheduler = BackgroundScheduler()
-scheduler.start()
+# 백업 스케줄러 설정 (배포용으로 비활성화)
+# scheduler = BackgroundScheduler()
+# scheduler.start()
 
 @login_manager.user_loader
 def load_user(user_id):
