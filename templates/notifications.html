@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>알림 센터</h2>
+    
+    <!-- 알림 설정 -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">알림 설정</h5>
+        </div>
+        <div class="card-body">
+            <form id="notificationSettingsForm">
+                {% for type in ['expiry', 'api_usage', 'error', 'backup', 'security'] %}
+                <div class="row mb-3 align-items-center">
+                    <div class="col-md-3">
+                        <label class="form-label">{{ type|replace('_', ' ')|title }}</label>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" 
+                                   name="email_{{ type }}" id="email_{{ type }}"
+                                   {% if settings.get(type, {}).get('email_enabled') %}checked{% endif %}>
+                            <label class="form-check-label" for="email_{{ type }}">
+                                이메일 알림
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" 
+                                   name="web_{{ type }}" id="web_{{ type }}"
+                                   {% if settings.get(type, {}).get('web_enabled') %}checked{% endif %}>
+                            <label class="form-check-label" for="web_{{ type }}">
+                                웹 알림
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <select class="form-select" name="priority_{{ type }}">
+                            <option value="high" {% if settings.get(type, {}).get('priority') == 'high' %}selected{% endif %}>높음</option>
+                            <option value="normal" {% if settings.get(type, {}).get('priority') == 'normal' %}selected{% endif %}>보통</option>
+                            <option value="low" {% if settings.get(type, {}).get('priority') == 'low' %}selected{% endif %}>낮음</option>
+                        </select>
+                    </div>
+                </div>
+                {% endfor %}
+                <button type="submit" class="btn btn-primary">설정 저장</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 알림 목록 -->
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">알림 목록</h5>
+            <div>
+                <button class="btn btn-sm btn-outline-secondary" id="markAllRead">모두 읽음 표시</button>
+                <button class="btn btn-sm btn-outline-danger" id="clearAll">모두 삭제</button>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="list-group">
+                {% for notification in notifications %}
+                <div class="list-group-item list-group-item-action {% if not notification.is_read %}active{% endif %}"
+                     data-id="{{ notification.id }}">
+                    <div class="d-flex w-100 justify-content-between">
+                        <h5 class="mb-1">{{ notification.title }}</h5>
+                        <small>{{ notification.created_at }}</small>
+                    </div>
+                    <p class="mb-1">{{ notification.message }}</p>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small>
+                            <span class="badge bg-{{ 'danger' if notification.priority == 'high' else 'warning' if notification.priority == 'normal' else 'info' }}">
+                                {{ notification.type|replace('_', ' ')|title }}
+                            </span>
+                        </small>
+                        <div>
+                            <button class="btn btn-sm btn-outline-secondary markRead" 
+                                    {% if notification.is_read %}disabled{% endif %}>
+                                읽음
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger delete">삭제</button>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 알림 설정 저장
+    const settingsForm = document.getElementById('notificationSettingsForm');
+    settingsForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const formData = new FormData(settingsForm);
+        const settings = {};
+        
+        ['expiry', 'api_usage', 'error', 'backup', 'security'].forEach(type => {
+            settings[type] = {
+                email_enabled: formData.get(`email_${type}`) === 'on',
+                web_enabled: formData.get(`web_${type}`) === 'on',
+                priority: formData.get(`priority_${type}`)
+            };
+        });
+
+        try {
+            const response = await fetch('/api/notifications/settings', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(settings)
+            });
+            
+            if (response.ok) {
+                alert('설정이 저장되었습니다.');
+            } else {
+                throw new Error('설정 저장 실패');
+            }
+        } catch (error) {
+            alert('설정 저장 중 오류가 발생했습니다.');
+            console.error(error);
+        }
+    });
+
+    // 알림 읽음 표시
+    document.querySelectorAll('.markRead').forEach(button => {
+        button.addEventListener('click', async function() {
+            const id = this.closest('.list-group-item').dataset.id;
+            try {
+                const response = await fetch(`/api/notifications/${id}/read`, {
+                    method: 'POST'
+                });
+                
+                if (response.ok) {
+                    this.disabled = true;
+                    this.closest('.list-group-item').classList.remove('active');
+                }
+            } catch (error) {
+                alert('알림 상태 변경 중 오류가 발생했습니다.');
+                console.error(error);
+            }
+        });
+    });
+
+    // 알림 삭제
+    document.querySelectorAll('.delete').forEach(button => {
+        button.addEventListener('click', async function() {
+            if (!confirm('이 알림을 삭제하시겠습니까?')) return;
+            
+            const item = this.closest('.list-group-item');
+            const id = item.dataset.id;
+            
+            try {
+                const response = await fetch(`/api/notifications/${id}`, {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    item.remove();
+                }
+            } catch (error) {
+                alert('알림 삭제 중 오류가 발생했습니다.');
+                console.error(error);
+            }
+        });
+    });
+
+    // 모두 읽음 표시
+    document.getElementById('markAllRead').addEventListener('click', async function() {
+        try {
+            const response = await fetch('/api/notifications/read-all', {
+                method: 'POST'
+            });
+            
+            if (response.ok) {
+                document.querySelectorAll('.list-group-item.active').forEach(item => {
+                    item.classList.remove('active');
+                    item.querySelector('.markRead').disabled = true;
+                });
+            }
+        } catch (error) {
+            alert('알림 상태 변경 중 오류가 발생했습니다.');
+            console.error(error);
+        }
+    });
+
+    // 모두 삭제
+    document.getElementById('clearAll').addEventListener('click', async function() {
+        if (!confirm('모든 알림을 삭제하시겠습니까?')) return;
+        
+        try {
+            const response = await fetch('/api/notifications/clear-all', {
+                method: 'DELETE'
+            });
+            
+            if (response.ok) {
+                document.querySelectorAll('.list-group-item').forEach(item => item.remove());
+            }
+        } catch (error) {
+            alert('알림 삭제 중 오류가 발생했습니다.');
+            console.error(error);
+        }
+    });
+});
+</script>
+{% endblock %} 

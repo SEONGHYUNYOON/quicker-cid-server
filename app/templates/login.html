@@ -1,0 +1,92 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>Quicker 관리자</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f2f5;
+        }
+        .login-box {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            width: 300px;
+            text-align: center;
+        }
+        .password-input {
+            width: 200px;
+            padding: 15px;
+            margin: 20px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+            text-align: center;
+            letter-spacing: 5px;
+        }
+        .login-button {
+            width: 100%;
+            padding: 12px;
+            background: #1877f2;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .login-button:hover {
+            background: #166fe5;
+        }
+        .error-message {
+            color: red;
+            margin-top: 10px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-box">
+        <h2>Quicker 관리자</h2>
+        <form method="POST" onsubmit="return validateForm()">
+            <input type="password" 
+                   name="password" 
+                   class="password-input" 
+                   placeholder="비밀번호" 
+                   maxlength="4" 
+                   required>
+            <button type="submit" class="login-button">로그인</button>
+        </form>
+        <div id="error-message" class="error-message">
+            잘못된 비밀번호입니다.
+        </div>
+    </div>
+
+    <script>
+        // 에러 메시지 표시
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('error')) {
+            document.getElementById('error-message').style.display = 'block';
+        }
+
+        // 숫자만 입력 가능하도록 제한
+        document.querySelector('.password-input').addEventListener('input', function(e) {
+            this.value = this.value.replace(/[^0-9]/g, '');
+        });
+
+        function validateForm() {
+            const password = document.querySelector('.password-input').value;
+            if (password.length !== 4) {
+                document.getElementById('error-message').style.display = 'block';
+                return false;
+            }
+            return true;
+        }
+    </script>
+</body>
+</html>

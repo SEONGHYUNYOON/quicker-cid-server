@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Quicker CID 관리</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f0f2f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #ddd;
+        }
+        .cid-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        .cid-table th, .cid-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        .cid-table th {
+            background-color: #f8f9fa;
+        }
+        .status-pending {
+            color: orange;
+        }
+        .status-approved {
+            color: green;
+        }
+        .status-rejected {
+            color: red;
+        }
+        .action-button {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .approve-button {
+            background-color: #28a745;
+            color: white;
+        }
+        .reject-button {
+            background-color: #dc3545;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Quicker CID 관리</h1>
+            <div>
+                <span>총 CID: <strong id="total-count">0</strong></span>
+                <span style="margin-left: 20px;">승인 대기: <strong id="pending-count">0</strong></span>
+            </div>
+        </div>
+
+        <table class="cid-table">
+            <thead>
+                <tr>
+                    <th>CID</th>
+                    <th>디바이스 정보</th>
+                    <th>상태</th>
+                    <th>생성일</th>
+                    <th>승인일</th>
+                    <th>작업</th>
+                </tr>
+            </thead>
+            <tbody id="cid-list">
+                <!-- CID 목록이 여기에 동적으로 추가됩니다 -->
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        // CID 목록을 가져오는 함수
+        async function loadCIDList() {
+            try {
+                const response = await fetch('/api/cid/list');
+                const data = await response.json();
+                updateTable(data);
+            } catch (error) {
+                console.error('Error loading CID list:', error);
+            }
+        }
+
+        // 테이블 업데이트 함수
+        function updateTable(data) {
+            const tbody = document.getElementById('cid-list');
+            tbody.innerHTML = '';
+
+            data.forEach(cid => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${cid.cid}</td>
+                    <td>${cid.device_info}</td>
+                    <td class="status-${cid.status.toLowerCase()}">${cid.status}</td>
+                    <td>${new Date(cid.created_at).toLocaleString()}</td>
+                    <td>${cid.approved_at ? new Date(cid.approved_at).toLocaleString() : '-'}</td>
+                    <td>
+                        ${cid.status === 'PENDING' ? `
+                            <button onclick="approveCID('${cid.cid}')" class="action-button approve-button">승인</button>
+                            <button onclick="rejectCID('${cid.cid}')" class="action-button reject-button">거부</button>
+                        ` : '-'}
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            // 카운트 업데이트
+            document.getElementById('total-count').textContent = data.length;
+            document.getElementById('pending-count').textContent = 
+                data.filter(cid => cid.status === 'PENDING').length;
+        }
+
+        // CID 승인 함수
+        async function approveCID(cid) {
+            try {
+                const response = await fetch(`/api/admin/cid/${cid}/approve`, {
+                    method: 'POST'
+                });
+                if (response.ok) {
+                    loadCIDList();
+                }
+            } catch (error) {
+                console.error('Error approving CID:', error);
+            }
+        }
+
+        // CID 거부 함수
+        async function rejectCID(cid) {
+            try {
+                const response = await fetch(`/api/admin/cid/${cid}/reject`, {
+                    method: 'POST'
+                });
+                if (response.ok) {
+                    loadCIDList();
+                }
+            } catch (error) {
+                console.error('Error rejecting CID:', error);
+            }
+        }
+
+        // 페이지 로드시 CID 목록 가져오기
+        document.addEventListener('DOMContentLoaded', loadCIDList);
+    </script>
+</body>
+</html>

@@ -1,0 +1,1313 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Quicker 관리자 대시보드</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <style>
+        body {
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .member-form {
+            margin-bottom: 20px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f8f9fa;
+        }
+        .cid-container {
+            margin-top: 10px;
+        }
+        .cid-input {
+            margin-bottom: 10px;
+        }
+        .search-box {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+        }
+        .date-filter {
+            margin-bottom: 15px;
+        }
+        .table th, .table td {
+            text-align: center;
+            vertical-align: middle;
+        }
+        .table th {
+            background-color: #f8f9fa;
+        }
+        .expired {
+            background-color: #ffe6e6;
+        }
+        .expiring-soon {
+            background-color: #fff3cd;
+        }
+        .edit-form {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.3);
+            z-index: 1000;
+            width: 80%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 999;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">Quicker 관리자</a>
+            <div class="navbar-nav me-auto">
+                <a class="nav-link" href="#" onclick="showMembers()">회원 관리</a>
+                <a class="nav-link" href="#" onclick="showApiKeys()">API 키 관리</a>
+                <a class="nav-link" href="#" onclick="showApiLogs()">API 로그</a>
+                <a class="nav-link" href="#" onclick="showBackups()">백업 관리</a>
+                <a class="nav-link" href="#" onclick="showStats()">통계</a>
+            </div>
+            <div class="d-flex">
+                <button class="btn btn-outline-light me-2" data-bs-toggle="modal" data-bs-target="#changePasswordModal">
+                    비밀번호 변경
+                </button>
+                <a href="/logout" class="btn btn-danger">로그아웃</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <!-- 회원 관리 섹션 -->
+        <div id="membersSection">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h2>회원 관리</h2>
+                <div>
+                    <button class="btn btn-success me-2" onclick="exportExcel()">엑셀 내보내기</button>
+                    <button class="btn btn-primary" onclick="showAddMemberModal()">회원 추가</button>
+                </div>
+            </div>
+
+            <div class="search-box">
+                <div class="row">
+                    <div class="col-md-6">
+                        <input type="text" class="form-control" id="searchInput" placeholder="이름, 전화번호, CID로 검색">
+                    </div>
+                    <div class="col-md-6">
+                        <div class="btn-group" role="group">
+                            <button class="btn btn-outline-primary" onclick="filterByDate('today')">오늘</button>
+                            <button class="btn btn-outline-primary" onclick="filterByDate('week')">7일 이내</button>
+                            <button class="btn btn-outline-primary" onclick="filterByDate('month')">1개월 이내</button>
+                            <button class="btn btn-outline-secondary" onclick="resetFilter()">필터 초기화</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="addMemberForm" class="member-form" style="display: none;">
+                <h3>회원 추가</h3>
+                <form id="memberForm">
+                    <div class="mb-3">
+                        <label class="form-label">이름</label>
+                        <input type="text" class="form-control" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">전화번호</label>
+                        <input type="text" class="form-control" name="phone" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">등록일</label>
+                        <input type="text" class="form-control datepicker" name="registration_date" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">만료일</label>
+                        <input type="text" class="form-control datepicker" name="expiry_date" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">입금액</label>
+                        <input type="text" class="form-control" name="deposit_amount" onkeyup="formatNumber(this)">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">추천인</label>
+                        <input type="text" class="form-control" name="referrer">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">CID</label>
+                        <div id="cidInputs" class="cid-container">
+                            <div class="cid-input">
+                                <input type="text" class="form-control" name="cids[]">
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-secondary mt-2" onclick="addCidInput()">CID 추가</button>
+                    </div>
+                    <button type="submit" class="btn btn-primary">저장</button>
+                    <button type="button" class="btn btn-secondary" onclick="hideAddMemberForm()">취소</button>
+                </form>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>이름</th>
+                            <th>전화번호</th>
+                            <th>등록일</th>
+                            <th>만료일</th>
+                            <th>입금액</th>
+                            <th>추천인</th>
+                            <th>CID</th>
+                            <th>작업</th>
+                        </tr>
+                    </thead>
+                    <tbody id="membersList">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- API 키 관리 섹션 -->
+        <div id="apiKeysSection" style="display: none;">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h2>API 키 관리</h2>
+                <button class="btn btn-primary" onclick="showCreateApiKeyModal()">API 키 생성</button>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>이름</th>
+                            <th>API 키</th>
+                            <th>생성일</th>
+                            <th>마지막 사용</th>
+                            <th>상태</th>
+                            <th>작업</th>
+                        </tr>
+                    </thead>
+                    <tbody id="apiKeysList"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- API 로그 섹션 -->
+        <div id="apiLogsSection" style="display: none;">
+            <h2 class="mb-3">API 로그</h2>
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>시간</th>
+                            <th>API 키</th>
+                            <th>엔드포인트</th>
+                            <th>메소드</th>
+                            <th>상태</th>
+                            <th>IP 주소</th>
+                        </tr>
+                    </thead>
+                    <tbody id="apiLogsList"></tbody>
+                </table>
+            </div>
+            <nav>
+                <ul class="pagination justify-content-center" id="apiLogsPagination"></ul>
+            </nav>
+        </div>
+
+        <!-- 백업 관리 섹션 -->
+        <div id="backupsSection" style="display: none;">
+            <div class="row">
+                <!-- 백업 목록 -->
+                <div class="col-md-8">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h2>백업 관리</h2>
+                        <button class="btn btn-primary" onclick="createBackup()">수동 백업</button>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>생성일시</th>
+                                    <th>파일명</th>
+                                    <th>크기</th>
+                                    <th>설명</th>
+                                    <th>유형</th>
+                                    <th>작업</th>
+                                </tr>
+                            </thead>
+                            <tbody id="backupsList"></tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- 백업 스케줄 -->
+                <div class="col-md-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h3>자동 백업 설정</h3>
+                        <button class="btn btn-sm btn-primary" onclick="showCreateScheduleModal()">스케줄 추가</button>
+                    </div>
+                    <div id="schedulesList"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 통계 섹션 -->
+        <div id="statsSection" style="display: none;">
+            <div class="row mb-4">
+                <!-- 기간 선택 -->
+                <div class="col-12 mb-3">
+                    <div class="btn-group" role="group">
+                        <button class="btn btn-outline-primary" onclick="loadStats(7)">7일</button>
+                        <button class="btn btn-outline-primary active" onclick="loadStats(30)">30일</button>
+                        <button class="btn btn-outline-primary" onclick="loadStats(90)">90일</button>
+                    </div>
+                </div>
+                
+                <!-- 주요 지표 -->
+                <div class="col-md-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">회원 현황</h5>
+                            <div class="stats-item">
+                                <span>전체 회원</span>
+                                <strong id="totalMembers">-</strong>
+                            </div>
+                            <div class="stats-item">
+                                <span>활성 회원</span>
+                                <strong id="activeMembers">-</strong>
+                            </div>
+                            <div class="stats-item">
+                                <span>신규 회원</span>
+                                <strong id="newMembers">-</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">CID 현황</h5>
+                            <div class="stats-item">
+                                <span>전체 CID</span>
+                                <strong id="totalCids">-</strong>
+                            </div>
+                            <div class="stats-item">
+                                <span>활성 CID</span>
+                                <strong id="activeCids">-</strong>
+                            </div>
+                            <div class="stats-item">
+                                <span>회원당 평균</span>
+                                <strong id="avgCidsPerMember">-</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">API 사용량</h5>
+                            <div class="stats-item">
+                                <span>총 호출</span>
+                                <strong id="totalApiCalls">-</strong>
+                            </div>
+                            <div class="stats-item">
+                                <span>성공률</span>
+                                <strong id="apiSuccessRate">-</strong>
+                            </div>
+                            <div class="stats-item">
+                                <span>일일 평균</span>
+                                <strong id="avgDailyCalls">-</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">입금 현황</h5>
+                            <div class="stats-item">
+                                <span>총 입금액</span>
+                                <strong id="totalDeposit">-</strong>
+                            </div>
+                            <div class="stats-item">
+                                <span>회원당 평균</span>
+                                <strong id="avgDeposit">-</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <!-- 일별 추이 차트 -->
+                <div class="col-md-8">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">일별 추이</h5>
+                            <canvas id="dailyTrendsChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- API 사용 분석 -->
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">API 사용 분석</h5>
+                            <canvas id="apiUsageChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="editFormOverlay" class="overlay" style="display: none;"></div>
+    <div id="editMemberForm" class="edit-form" style="display: none;">
+        <h3>회원 정보 수정</h3>
+        <form id="editForm">
+            <input type="hidden" name="id">
+            <div class="mb-3">
+                <label class="form-label">이름</label>
+                <input type="text" class="form-control" name="name" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">전화번호</label>
+                <input type="text" class="form-control" name="phone" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">등록일</label>
+                <input type="text" class="form-control datepicker" name="registration_date" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">만료일</label>
+                <input type="text" class="form-control datepicker" name="expiry_date" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">입금액</label>
+                <input type="text" class="form-control" name="deposit_amount" onkeyup="formatNumber(this)">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">추천인</label>
+                <input type="text" class="form-control" name="referrer">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">CID</label>
+                <div id="editCidInputs" class="cid-container"></div>
+                <button type="button" class="btn btn-secondary mt-2" onclick="addEditCidInput()">CID 추가</button>
+            </div>
+            <button type="submit" class="btn btn-primary">저장</button>
+            <button type="button" class="btn btn-secondary" onclick="hideEditMemberForm()">취소</button>
+        </form>
+    </div>
+
+    <!-- 비밀번호 변경 모달 -->
+    <div class="modal fade" id="changePasswordModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">비밀번호 변경</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="changePasswordForm">
+                        <div class="mb-3">
+                            <label class="form-label">현재 비밀번호</label>
+                            <input type="password" class="form-control" id="currentPassword" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">새 비밀번호</label>
+                            <input type="password" class="form-control" id="newPassword" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">새 비밀번호 확인</label>
+                            <input type="password" class="form-control" id="confirmPassword" required>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                    <button type="button" class="btn btn-primary" onclick="changePassword()">변경</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- API 키 생성 모달 -->
+    <div class="modal fade" id="createApiKeyModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">API 키 생성</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="createApiKeyForm">
+                        <div class="mb-3">
+                            <label class="form-label">이름</label>
+                            <input type="text" class="form-control" id="apiKeyName" required>
+                            <div class="form-text">API 키를 구분할 수 있는 이름을 입력하세요.</div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                    <button type="button" class="btn btn-primary" onclick="createApiKey()">생성</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 백업 스케줄 생성 모달 -->
+    <div class="modal fade" id="createScheduleModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">백업 스케줄 추가</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="createScheduleForm">
+                        <div class="mb-3">
+                            <label class="form-label">주기</label>
+                            <select class="form-select" id="scheduleFrequency" required>
+                                <option value="daily">매일</option>
+                                <option value="weekly">매주</option>
+                                <option value="monthly">매월</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">시간</label>
+                            <input type="time" class="form-control" id="scheduleTime" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">보관 기간 (일)</label>
+                            <input type="number" class="form-control" id="retentionDays" value="30" min="1" required>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                    <button type="button" class="btn btn-primary" onclick="createSchedule()">추가</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // 날짜 선택기 초기화
+        flatpickr(".datepicker", {
+            dateFormat: "Y-m-d",
+            locale: "ko"
+        });
+
+        // 회원 목록 로드
+        function loadMembers() {
+            fetch('/api/members')
+                .then(response => response.json())
+                .then(members => {
+                    const tbody = document.getElementById('membersList');
+                    tbody.innerHTML = '';
+                    members.forEach((member, index) => {
+                        const expiryDate = new Date(member.expiry_date);
+                        const today = new Date();
+                        const diffDays = Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24));
+                        
+                        let rowClass = '';
+                        if (diffDays < 0) {
+                            rowClass = 'expired';
+                        } else if (diffDays <= 7) {
+                            rowClass = 'expiring-soon';
+                        }
+
+                        // 금액에 천단위 콤마 추가
+                        const formattedAmount = member.deposit_amount.toLocaleString() + '원';
+
+                        tbody.innerHTML += `
+                            <tr class="${rowClass}">
+                                <td>${index + 1}</td>
+                                <td>${member.name}</td>
+                                <td>${member.phone}</td>
+                                <td>${member.registration_date}</td>
+                                <td>${member.expiry_date}</td>
+                                <td>${formattedAmount}</td>
+                                <td>${member.referrer || ''}</td>
+                                <td>${member.cids.join(', ')}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-primary" onclick="editMember(${member.id})">수정</button>
+                                    <button class="btn btn-sm btn-danger" onclick="deleteMember(${member.id})">삭제</button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                });
+        }
+
+        // 회원 수정 폼 표시
+        function editMember(id) {
+            fetch(`/api/members/${id}`)
+                .then(response => response.json())
+                .then(member => {
+                    const form = document.getElementById('editForm');
+                    form.id.value = member.id;
+                    form.name.value = member.name;
+                    form.phone.value = member.phone;
+                    form.registration_date.value = member.registration_date;
+                    form.expiry_date.value = member.expiry_date;
+                    form.deposit_amount.value = member.deposit_amount;
+                    form.referrer.value = member.referrer || '';
+
+                    const cidContainer = document.getElementById('editCidInputs');
+                    cidContainer.innerHTML = '';
+                    member.cids.forEach(cid => {
+                        addEditCidInput(cid);
+                    });
+
+                    document.getElementById('editFormOverlay').style.display = 'block';
+                    document.getElementById('editMemberForm').style.display = 'block';
+                });
+        }
+
+        // 회원 수정 폼 숨기기
+        function hideEditMemberForm() {
+            document.getElementById('editFormOverlay').style.display = 'none';
+            document.getElementById('editMemberForm').style.display = 'none';
+        }
+
+        // 수정용 CID 입력 필드 추가
+        function addEditCidInput(value = '') {
+            const container = document.getElementById('editCidInputs');
+            const div = document.createElement('div');
+            div.className = 'cid-input';
+            div.innerHTML = `
+                <div class="input-group">
+                    <input type="text" class="form-control" name="cids[]" value="${value}">
+                    <button type="button" class="btn btn-danger" onclick="this.parentElement.remove()">삭제</button>
+                </div>
+            `;
+            container.appendChild(div);
+        }
+
+        // 회원 수정 폼 제출
+        document.getElementById('editForm').onsubmit = function(e) {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            removeCommas(formData);
+            const data = {
+                id: formData.get('id'),
+                name: formData.get('name'),
+                phone: formData.get('phone'),
+                registration_date: formData.get('registration_date'),
+                expiry_date: formData.get('expiry_date'),
+                deposit_amount: parseInt(formData.get('deposit_amount')) || 0,
+                referrer: formData.get('referrer'),
+                cids: Array.from(formData.getAll('cids[]')).filter(cid => cid)
+            };
+
+            fetch(`/api/members/${data.id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(() => {
+                loadMembers();
+                hideEditMemberForm();
+            });
+        };
+
+        // 날짜 기준 필터링
+        function filterByDate(period) {
+            const rows = document.getElementById('membersList').getElementsByTagName('tr');
+            const today = new Date();
+            
+            Array.from(rows).forEach(row => {
+                const registrationDate = new Date(row.cells[3].textContent);
+                const diffDays = Math.ceil((today - registrationDate) / (1000 * 60 * 60 * 24));
+                
+                switch(period) {
+                    case 'today':
+                        row.style.display = diffDays <= 1 ? '' : 'none';
+                        break;
+                    case 'week':
+                        row.style.display = diffDays <= 7 ? '' : 'none';
+                        break;
+                    case 'month':
+                        row.style.display = diffDays <= 30 ? '' : 'none';
+                        break;
+                }
+            });
+        }
+
+        // 필터 초기화
+        function resetFilter() {
+            const rows = document.getElementById('membersList').getElementsByTagName('tr');
+            Array.from(rows).forEach(row => row.style.display = '');
+            document.getElementById('searchInput').value = '';
+        }
+
+        // 회원 추가 폼 표시/숨김
+        function showAddMemberForm() {
+            document.getElementById('addMemberForm').style.display = 'block';
+        }
+
+        function hideAddMemberForm() {
+            document.getElementById('addMemberForm').style.display = 'none';
+            document.getElementById('memberForm').reset();
+        }
+
+        // CID 입력 필드 추가
+        function addCidInput() {
+            const container = document.getElementById('cidInputs');
+            const div = document.createElement('div');
+            div.className = 'cid-input';
+            div.innerHTML = `
+                <div class="input-group">
+                    <input type="text" class="form-control" name="cids[]">
+                    <button type="button" class="btn btn-danger" onclick="this.parentElement.remove()">삭제</button>
+                </div>
+            `;
+            container.appendChild(div);
+        }
+
+        // 회원 추가
+        document.getElementById('memberForm').onsubmit = function(e) {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            removeCommas(formData);
+            const data = {
+                name: formData.get('name'),
+                phone: formData.get('phone'),
+                registration_date: formData.get('registration_date'),
+                expiry_date: formData.get('expiry_date'),
+                deposit_amount: parseInt(formData.get('deposit_amount')) || 0,
+                referrer: formData.get('referrer'),
+                cids: Array.from(formData.getAll('cids[]')).filter(cid => cid)
+            };
+
+            fetch('/api/members', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(() => {
+                loadMembers();
+                hideAddMemberForm();
+            });
+        };
+
+        // 회원 삭제
+        function deleteMember(id) {
+            if (confirm('정말 삭제하시겠습니까?')) {
+                fetch(`/api/members/${id}`, {
+                    method: 'DELETE'
+                })
+                .then(() => loadMembers());
+            }
+        }
+
+        // 엑셀 내보내기
+        function exportExcel() {
+            window.location.href = '/api/export';
+        }
+
+        // 로그아웃
+        function logout() {
+            window.location.href = '/';
+        }
+
+        // 초기 로드
+        loadMembers();
+
+        // 검색 기능 개선
+        document.getElementById('searchInput').addEventListener('keyup', function() {
+            const searchText = this.value.toLowerCase();
+            const rows = document.getElementById('membersList').getElementsByTagName('tr');
+            
+            Array.from(rows).forEach(row => {
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(searchText) ? '' : 'none';
+            });
+        });
+
+        // 금액 입력 필드에 천단위 콤마 추가
+        function formatNumber(input) {
+            let value = input.value.replace(/[^\d]/g, '');
+            input.value = Number(value).toLocaleString();
+        }
+
+        // 폼 제출 시 콤마 제거
+        function removeCommas(formData) {
+            const amount = formData.get('deposit_amount');
+            if (amount) {
+                formData.set('deposit_amount', amount.replace(/,/g, ''));
+            }
+            return formData;
+        }
+
+        function changePassword() {
+            const currentPassword = document.getElementById('currentPassword').value;
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            
+            fetch('/change-password', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    current_password: currentPassword,
+                    new_password: newPassword,
+                    confirm_password: confirmPassword
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert(data.error);
+                } else {
+                    alert(data.message);
+                    document.getElementById('changePasswordForm').reset();
+                    bootstrap.Modal.getInstance(document.getElementById('changePasswordModal')).hide();
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('비밀번호 변경 중 오류가 발생했습니다.');
+            });
+        }
+
+        function showMembers() {
+            document.getElementById('membersSection').style.display = 'block';
+            document.getElementById('apiKeysSection').style.display = 'none';
+            document.getElementById('apiLogsSection').style.display = 'none';
+        }
+
+        function showApiKeys() {
+            document.getElementById('membersSection').style.display = 'none';
+            document.getElementById('apiKeysSection').style.display = 'block';
+            document.getElementById('apiLogsSection').style.display = 'none';
+            loadApiKeys();
+        }
+
+        function showApiLogs() {
+            document.getElementById('membersSection').style.display = 'none';
+            document.getElementById('apiKeysSection').style.display = 'none';
+            document.getElementById('apiLogsSection').style.display = 'block';
+            loadApiLogs(1);
+        }
+
+        function loadApiKeys() {
+            fetch('/api/keys')
+                .then(response => response.json())
+                .then(keys => {
+                    const tbody = document.getElementById('apiKeysList');
+                    tbody.innerHTML = '';
+                    
+                    keys.forEach(key => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>${key.name}</td>
+                            <td><code>${key.key}</code></td>
+                            <td>${key.created_at}</td>
+                            <td>${key.last_used_at || '-'}</td>
+                            <td>${key.is_active ? '<span class="badge bg-success">활성</span>' : '<span class="badge bg-danger">비활성</span>'}</td>
+                            <td>
+                                ${key.is_active ? 
+                                    `<button class="btn btn-sm btn-danger" onclick="deleteApiKey(${key.id})">비활성화</button>` : 
+                                    '-'}
+                            </td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                });
+        }
+
+        function showCreateApiKeyModal() {
+            document.getElementById('createApiKeyForm').reset();
+            new bootstrap.Modal(document.getElementById('createApiKeyModal')).show();
+        }
+
+        function createApiKey() {
+            const name = document.getElementById('apiKeyName').value;
+            
+            fetch('/api/keys', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ name })
+            })
+            .then(response => response.json())
+            .then(key => {
+                bootstrap.Modal.getInstance(document.getElementById('createApiKeyModal')).hide();
+                loadApiKeys();
+                alert(`API 키가 생성되었습니다: ${key.key}`);
+            });
+        }
+
+        function deleteApiKey(id) {
+            if (!confirm('이 API 키를 비활성화하시겠습니까?')) return;
+            
+            fetch(`/api/keys/${id}`, {
+                method: 'DELETE'
+            })
+            .then(() => {
+                loadApiKeys();
+            });
+        }
+
+        function loadApiLogs(page) {
+            fetch(`/api/logs?page=${page}`)
+                .then(response => response.json())
+                .then(data => {
+                    const tbody = document.getElementById('apiLogsList');
+                    tbody.innerHTML = '';
+                    
+                    data.logs.forEach(log => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>${log.timestamp}</td>
+                            <td>${log.api_key || '-'}</td>
+                            <td>${log.endpoint}</td>
+                            <td>${log.method}</td>
+                            <td>${log.status_code || '-'}</td>
+                            <td>${log.ip_address}</td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                    
+                    // 페이지네이션 업데이트
+                    const pagination = document.getElementById('apiLogsPagination');
+                    pagination.innerHTML = '';
+                    
+                    for (let i = 1; i <= data.pages; i++) {
+                        const li = document.createElement('li');
+                        li.className = `page-item${i === data.current_page ? ' active' : ''}`;
+                        li.innerHTML = `
+                            <a class="page-link" href="#" onclick="loadApiLogs(${i})">${i}</a>
+                        `;
+                        pagination.appendChild(li);
+                    }
+                });
+        }
+
+        // 초기 페이지 로드 시 회원 목록 표시
+        showMembers();
+
+        function showBackups() {
+            document.getElementById('membersSection').style.display = 'none';
+            document.getElementById('apiKeysSection').style.display = 'none';
+            document.getElementById('apiLogsSection').style.display = 'none';
+            document.getElementById('backupsSection').style.display = 'block';
+            loadBackups();
+            loadSchedules();
+        }
+
+        function loadBackups() {
+            fetch('/api/backups')
+                .then(response => response.json())
+                .then(backups => {
+                    const tbody = document.getElementById('backupsList');
+                    tbody.innerHTML = '';
+                    
+                    backups.forEach(backup => {
+                        const tr = document.createElement('tr');
+                        const size = formatFileSize(backup.size);
+                        tr.innerHTML = `
+                            <td>${backup.created_at}</td>
+                            <td>${backup.filename}</td>
+                            <td>${size}</td>
+                            <td>${backup.description || '-'}</td>
+                            <td>${backup.is_auto ? '<span class="badge bg-info">자동</span>' : '<span class="badge bg-primary">수동</span>'}</td>
+                            <td>
+                                <button class="btn btn-sm btn-warning me-1" onclick="restoreBackup(${backup.id})">복원</button>
+                                ${!backup.is_auto ? `<button class="btn btn-sm btn-danger" onclick="deleteBackup(${backup.id})">삭제</button>` : ''}
+                            </td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                });
+        }
+
+        function loadSchedules() {
+            fetch('/api/backup-schedules')
+                .then(response => response.json())
+                .then(schedules => {
+                    const container = document.getElementById('schedulesList');
+                    container.innerHTML = '';
+                    
+                    schedules.forEach(schedule => {
+                        const card = document.createElement('div');
+                        card.className = 'card mb-3';
+                        card.innerHTML = `
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <h5 class="card-title mb-0">
+                                        ${formatFrequency(schedule.frequency)}
+                                        <span class="badge ${schedule.is_active ? 'bg-success' : 'bg-danger'} ms-2">
+                                            ${schedule.is_active ? '활성' : '비활성'}
+                                        </span>
+                                    </h5>
+                                    <button class="btn btn-sm btn-danger" onclick="deleteSchedule(${schedule.id})">삭제</button>
+                                </div>
+                                <p class="card-text">
+                                    실행 시간: ${schedule.time}<br>
+                                    보관 기간: ${schedule.retention_days}일<br>
+                                    마지막 실행: ${schedule.last_run || '-'}
+                                </p>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" ${schedule.is_active ? 'checked' : ''}
+                                        onchange="toggleSchedule(${schedule.id}, this.checked)">
+                                    <label class="form-check-label">활성화</label>
+                                </div>
+                            </div>
+                        `;
+                        container.appendChild(card);
+                    });
+                });
+        }
+
+        function formatFrequency(frequency) {
+            switch (frequency) {
+                case 'daily': return '매일';
+                case 'weekly': return '매주';
+                case 'monthly': return '매월';
+                default: return frequency;
+            }
+        }
+
+        function formatFileSize(bytes) {
+            const units = ['B', 'KB', 'MB', 'GB'];
+            let size = bytes;
+            let unitIndex = 0;
+            
+            while (size >= 1024 && unitIndex < units.length - 1) {
+                size /= 1024;
+                unitIndex++;
+            }
+            
+            return `${size.toFixed(1)} ${units[unitIndex]}`;
+        }
+
+        function createBackup() {
+            const description = prompt('백업 설명을 입력하세요 (선택사항):');
+            
+            fetch('/api/backups', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ description })
+            })
+            .then(response => response.json())
+            .then(() => {
+                loadBackups();
+            });
+        }
+
+        function deleteBackup(id) {
+            if (!confirm('이 백업을 삭제하시겠습니까?')) return;
+            
+            fetch(`/api/backups/${id}`, {
+                method: 'DELETE'
+            })
+            .then(() => {
+                loadBackups();
+            });
+        }
+
+        function restoreBackup(id) {
+            if (!confirm('이 백업으로 복원하시겠습니까?\n주의: 현재 데이터는 모두 백업 시점의 데이터로 대체됩니다.')) return;
+            
+            fetch(`/api/backups/${id}/restore`, {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert(data.error);
+                } else {
+                    alert(data.message);
+                    location.reload();
+                }
+            });
+        }
+
+        function showCreateScheduleModal() {
+            document.getElementById('createScheduleForm').reset();
+            new bootstrap.Modal(document.getElementById('createScheduleModal')).show();
+        }
+
+        function createSchedule() {
+            const data = {
+                frequency: document.getElementById('scheduleFrequency').value,
+                time: document.getElementById('scheduleTime').value,
+                retention_days: parseInt(document.getElementById('retentionDays').value)
+            };
+            
+            fetch('/api/backup-schedules', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(() => {
+                bootstrap.Modal.getInstance(document.getElementById('createScheduleModal')).hide();
+                loadSchedules();
+            });
+        }
+
+        function deleteSchedule(id) {
+            if (!confirm('이 백업 스케줄을 삭제하시겠습니까?')) return;
+            
+            fetch(`/api/backup-schedules/${id}`, {
+                method: 'DELETE'
+            })
+            .then(() => {
+                loadSchedules();
+            });
+        }
+
+        function toggleSchedule(id, isActive) {
+            fetch(`/api/backup-schedules/${id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ is_active: isActive })
+            })
+            .then(() => {
+                loadSchedules();
+            });
+        }
+
+        function showStats() {
+            document.getElementById('membersSection').style.display = 'none';
+            document.getElementById('apiKeysSection').style.display = 'none';
+            document.getElementById('apiLogsSection').style.display = 'none';
+            document.getElementById('backupsSection').style.display = 'none';
+            document.getElementById('statsSection').style.display = 'block';
+            loadStats(30);  // 기본값: 30일
+        }
+
+        let dailyTrendsChart = null;
+        let apiUsageChart = null;
+
+        function loadStats(days) {
+            // 버튼 활성화 상태 변경
+            document.querySelectorAll('.btn-group .btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelector(`.btn-group .btn:nth-child(${days === 30 ? 2 : days === 7 ? 1 : 3})`).classList.add('active');
+            
+            // 통계 개요 로드
+            fetch(`/api/stats/overview?days=${days}`)
+                .then(response => response.json())
+                .then(data => {
+                    // 회원 현황
+                    document.getElementById('totalMembers').textContent = data.members.total.toLocaleString();
+                    document.getElementById('activeMembers').textContent = data.members.active.toLocaleString();
+                    document.getElementById('newMembers').textContent = data.members.new.toLocaleString();
+                    
+                    // CID 현황
+                    document.getElementById('totalCids').textContent = data.cids.total.toLocaleString();
+                    document.getElementById('activeCids').textContent = data.cids.active.toLocaleString();
+                    document.getElementById('avgCidsPerMember').textContent = data.cids.per_member_avg.toFixed(1);
+                    
+                    // API 사용량
+                    document.getElementById('totalApiCalls').textContent = data.api.total_calls.toLocaleString();
+                    document.getElementById('apiSuccessRate').textContent = (data.api.success_rate * 100).toFixed(1) + '%';
+                    document.getElementById('avgDailyCalls').textContent = Math.round(data.api.total_calls / days).toLocaleString();
+                    
+                    // 입금 현황
+                    document.getElementById('totalDeposit').textContent = data.members.total_deposit.toLocaleString() + '원';
+                    document.getElementById('avgDeposit').textContent = Math.round(data.members.avg_deposit).toLocaleString() + '원';
+                });
+            
+            // 일별 통계 로드
+            fetch(`/api/stats/daily?days=${days}`)
+                .then(response => response.json())
+                .then(data => {
+                    const dates = data.map(d => d.date);
+                    const activeMembers = data.map(d => d.active_members);
+                    const apiCalls = data.map(d => d.api_calls);
+                    
+                    if (dailyTrendsChart) {
+                        dailyTrendsChart.destroy();
+                    }
+                    
+                    dailyTrendsChart = new Chart(
+                        document.getElementById('dailyTrendsChart'),
+                        {
+                            type: 'line',
+                            data: {
+                                labels: dates,
+                                datasets: [
+                                    {
+                                        label: '활성 회원',
+                                        data: activeMembers,
+                                        borderColor: 'rgb(75, 192, 192)',
+                                        tension: 0.1
+                                    },
+                                    {
+                                        label: 'API 호출',
+                                        data: apiCalls,
+                                        borderColor: 'rgb(255, 99, 132)',
+                                        tension: 0.1
+                                    }
+                                ]
+                            },
+                            options: {
+                                responsive: true,
+                                scales: {
+                                    y: {
+                                        beginAtZero: true
+                                    }
+                                }
+                            }
+                        }
+                    );
+                });
+            
+            // API 사용 분석 로드
+            fetch(`/api/stats/api-usage?days=${days}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (apiUsageChart) {
+                        apiUsageChart.destroy();
+                    }
+                    
+                    const hourlyData = Array(24).fill(0);
+                    data.by_hour.forEach(item => {
+                        hourlyData[item.hour] = item.count;
+                    });
+                    
+                    apiUsageChart = new Chart(
+                        document.getElementById('apiUsageChart'),
+                        {
+                            type: 'bar',
+                            data: {
+                                labels: Array.from({length: 24}, (_, i) => `${i}시`),
+                                datasets: [{
+                                    label: '시간대별 API 호출',
+                                    data: hourlyData,
+                                    backgroundColor: 'rgba(54, 162, 235, 0.5)'
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                scales: {
+                                    y: {
+                                        beginAtZero: true
+                                    }
+                                }
+                            }
+                        }
+                    );
+                });
+        }
+
+        // 회원 활동 내역 조회
+        function showMemberActivity(memberId) {
+            fetch(`/api/stats/members/${memberId}/activity`)
+                .then(response => response.json())
+                .then(activities => {
+                    const activityList = activities.map(activity => `
+                        <div class="activity-item">
+                            <div class="activity-time">${activity.timestamp}</div>
+                            <div class="activity-type">${formatActivityType(activity.activity_type)}</div>
+                            ${activity.amount ? `<div class="activity-amount">${activity.amount.toLocaleString()}원</div>` : ''}
+                            ${activity.details ? `<div class="activity-details">${activity.details}</div>` : ''}
+                        </div>
+                    `).join('');
+                    
+                    // 모달로 표시
+                    const modal = new bootstrap.Modal(document.getElementById('activityModal'));
+                    document.getElementById('activityModalBody').innerHTML = activityList;
+                    modal.show();
+                });
+        }
+
+        function formatActivityType(type) {
+            switch (type) {
+                case 'registration': return '회원 등록';
+                case 'renewal': return '기간 연장';
+                case 'deposit': return '입금';
+                default: return type;
+            }
+        }
+
+        // CSS 스타일 추가
+        const style = document.createElement('style');
+        style.textContent = `
+            .stats-item {
+                display: flex;
+                justify-content: space-between;
+                margin-bottom: 10px;
+            }
+            .stats-item strong {
+                color: #007bff;
+            }
+            .activity-item {
+                border-bottom: 1px solid #eee;
+                padding: 10px 0;
+            }
+            .activity-time {
+                color: #666;
+                font-size: 0.9em;
+            }
+            .activity-type {
+                font-weight: bold;
+                color: #007bff;
+            }
+            .activity-amount {
+                color: #28a745;
+            }
+            .activity-details {
+                color: #666;
+                font-size: 0.9em;
+                margin-top: 5px;
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html> 

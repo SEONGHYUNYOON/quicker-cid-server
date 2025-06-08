@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="120dp"
+    android:viewportWidth="200"
+    android:viewportHeight="120">
+
+    <!-- Speed Lines -->
+    <path
+        android:pathData="M20,60 L40,60 M25,50 L45,50 M25,70 L45,70"
+        android:strokeWidth="3"
+        android:strokeColor="#81C784"
+        android:strokeLineCap="round"/>
+
+    <!-- Motorcycle Body -->
+    <path
+        android:pathData="M50,60 C60,60 70,55 80,55 L120,55 C130,55 135,60 140,60 L150,60 C155,60 160,55 165,55 L180,55 C185,55 190,60 190,65 C190,70 185,75 180,75 L165,75 C160,75 155,70 150,70 L140,70 C135,70 130,75 120,75 L80,75 C70,75 60,70 50,70 Z"
+        android:fillColor="#4CAF50"
+        android:strokeWidth="2"
+        android:strokeColor="#2E7D32"/>
+
+    <!-- Wheels -->
+    <path
+        android:pathData="M70,75 A10,10 0 1,1 70,95 A10,10 0 1,1 70,75"
+        android:fillColor="#2E7D32"/>
+    <path
+        android:pathData="M160,75 A10,10 0 1,1 160,95 A10,10 0 1,1 160,75"
+        android:fillColor="#2E7D32"/>
+
+</vector> 
