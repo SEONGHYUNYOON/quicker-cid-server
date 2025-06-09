@@ -117,7 +117,7 @@ class CID(db.Model):
     cid_value = db.Column(db.String(100), nullable=False, unique=True)
     member_id = db.Column(db.Integer, db.ForeignKey('member.id'), nullable=False)
     is_active = db.Column(db.Boolean, default=True)
-    last_verified_at = db.Column(db.DateTime)
+    # last_verified_at = db.Column(db.DateTime)  # 임시로 비활성화
     
     def to_dict(self):
         return {
@@ -125,7 +125,7 @@ class CID(db.Model):
             'cid_value': self.cid_value,
             'member_id': self.member_id,
             'is_active': self.is_active,
-            'last_verified_at': self.last_verified_at.strftime('%Y-%m-%d %H:%M:%S') if self.last_verified_at else None
+            # 'last_verified_at': self.last_verified_at.strftime('%Y-%m-%d %H:%M:%S') if self.last_verified_at else None
         }
 
 class Backup(db.Model):
