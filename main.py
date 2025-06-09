@@ -105,9 +105,18 @@ def require_api_key(f):
 
 @app.route('/')
 def index():
-    if current_user.is_authenticated:
-        return redirect(url_for('dashboard'))
-    return render_template('login.html')
+    try:
+        if current_user.is_authenticated:
+            return redirect(url_for('dashboard'))
+        return render_template('login.html')
+    except Exception as e:
+        # 에러 발생 시 디버그 정보 반환
+        return f"""
+        <h1>Debug Info</h1>
+        <p><strong>Error:</strong> {str(e)}</p>
+        <p><strong>Database URI:</strong> {app.config.get('SQLALCHEMY_DATABASE_URI', 'Not set')[:50]}...</p>
+        <p><a href="/api/test/status">Test Status</a></p>
+        """
 
 @app.route('/login', methods=['POST'])
 def login():
