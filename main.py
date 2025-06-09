@@ -165,6 +165,19 @@ def login():
             <body>
                 <h1>Quicker CID Dashboard</h1>
                 <p>Login successful!</p>
+                
+                <h2>Add New Member</h2>
+                <form method="POST" action="/add_member">
+                    <p>Name: <input type="text" name="name" required></p>
+                    <p>Phone: <input type="text" name="phone" required></p>
+                    <p>Registration Date: <input type="date" name="registration_date" required></p>
+                    <p>Expiry Date: <input type="date" name="expiry_date" required></p>
+                    <p>Deposit Amount: <input type="number" name="deposit_amount" value="0"></p>
+                    <p>Referrer: <input type="text" name="referrer"></p>
+                    <p>CID: <input type="text" name="cid" placeholder="Optional"></p>
+                    <p><input type="submit" value="Add Member"></p>
+                </form>
+                
                 <h2>Members ({len(members)})</h2>
                 <ul>{member_list}</ul>
                 <p><a href="/logout">Logout</a></p>
@@ -188,7 +201,65 @@ def login():
         <h1>Login Error</h1>
         <p><strong>Error:</strong> {str(e)}</p>
         <p><strong>Password received:</strong> {request.form.get('password', 'None')}</p>
-        <p><a href="/">Back to Login</a></p>
+                 <p><a href="/">Back to Login</a></p>
+         """
+
+@app.route('/add_member', methods=['POST'])
+def add_member_simple():
+    try:
+        name = request.form.get('name')
+        phone = request.form.get('phone')
+        registration_date = request.form.get('registration_date')
+        expiry_date = request.form.get('expiry_date')
+        deposit_amount = int(request.form.get('deposit_amount', 0))
+        referrer = request.form.get('referrer', '')
+        cid_value = request.form.get('cid', '')
+        
+        # 전화번호 중복 검사
+        existing_member = Member.query.filter_by(phone=phone).first()
+        if existing_member:
+            return f"""
+            <h1>Error</h1>
+            <p>Phone number {phone} already exists!</p>
+            <p><a href="javascript:history.back()">Go Back</a></p>
+            """
+        
+        # 회원 생성
+        from dateutil.parser import parse
+        member = Member(
+            name=name,
+            phone=phone,
+            registration_date=parse(registration_date),
+            expiry_date=parse(expiry_date),
+            deposit_amount=deposit_amount,
+            referrer=referrer
+        )
+        
+        db.session.add(member)
+        db.session.flush()  # member.id 얻기
+        
+        # CID 추가 (있는 경우)
+        if cid_value.strip():
+            cid = CID(
+                cid_value=cid_value.strip(),
+                member_id=member.id,
+                is_active=True
+            )
+            db.session.add(cid)
+        
+        db.session.commit()
+        
+        return f"""
+        <h1>Success!</h1>
+        <p>Member {name} added successfully!</p>
+        <p><a href="/login">Back to Dashboard</a></p>
+        """
+        
+    except Exception as e:
+        return f"""
+        <h1>Error Adding Member</h1>
+        <p><strong>Error:</strong> {str(e)}</p>
+        <p><a href="javascript:history.back()">Go Back</a></p>
         """
 
 @app.route('/logout')
