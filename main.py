@@ -220,9 +220,14 @@ def add_member():
         referrer=data.get('referrer', '')
     )
     db.session.add(member)
+    db.session.flush()  # member.id를 얻기 위해 flush
     
     for cid_value in data.get('cids', []):
-        cid = CID(cid_value=cid_value, member=member)
+        cid = CID(
+            cid_value=cid_value, 
+            member_id=member.id,
+            is_active=True
+        )
         db.session.add(cid)
     
     db.session.commit()
@@ -272,7 +277,11 @@ def update_member(id):
     CID.query.filter_by(member_id=member.id).delete()
     
     for cid_value in data.get('cids', []):
-        cid = CID(cid_value=cid_value, member=member)
+        cid = CID(
+            cid_value=cid_value, 
+            member_id=member.id,
+            is_active=True
+        )
         db.session.add(cid)
     
     db.session.commit()
