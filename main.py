@@ -521,44 +521,45 @@ def cleanup_old_backups():
         db.session.commit()
 
 def schedule_backup(schedule_id):
-    """백업 스케줄 설정"""
-    schedule = BackupSchedule.query.get(schedule_id)
-    if not schedule or not schedule.is_active:
-        return
-    
-    if schedule.frequency == 'daily':
-        trigger = CronTrigger(
-            hour=schedule.time.hour,
-            minute=schedule.time.minute
-        )
-    elif schedule.frequency == 'weekly':
-        trigger = CronTrigger(
-            day_of_week='mon',
-            hour=schedule.time.hour,
-            minute=schedule.time.minute
-        )
-    elif schedule.frequency == 'monthly':
-        trigger = CronTrigger(
-            day=1,
-            hour=schedule.time.hour,
-            minute=schedule.time.minute
-        )
-    else:
-        return
-    
-    job_id = f'backup_schedule_{schedule_id}'
-    if job_id in scheduler.get_jobs():
-        scheduler.remove_job(job_id)
-    
-    scheduler.add_job(
-        func=lambda: create_backup(
-            description=f'자동 백업 ({schedule.frequency})',
-            is_auto=True
-        ),
-        trigger=trigger,
-        id=job_id,
-        name=f'Backup Schedule {schedule_id}'
-    )
+    """백업 스케줄 설정 (배포용으로 비활성화)"""
+    # schedule = BackupSchedule.query.get(schedule_id)
+    # if not schedule or not schedule.is_active:
+    #     return
+    # 
+    # if schedule.frequency == 'daily':
+    #     trigger = CronTrigger(
+    #         hour=schedule.time.hour,
+    #         minute=schedule.time.minute
+    #     )
+    # elif schedule.frequency == 'weekly':
+    #     trigger = CronTrigger(
+    #         day_of_week='mon',
+    #         hour=schedule.time.hour,
+    #         minute=schedule.time.minute
+    #     )
+    # elif schedule.frequency == 'monthly':
+    #     trigger = CronTrigger(
+    #         day=1,
+    #         hour=schedule.time.hour,
+    #         minute=schedule.time.minute
+    #     )
+    # else:
+    #     return
+    # 
+    # job_id = f'backup_schedule_{schedule_id}'
+    # if job_id in scheduler.get_jobs():
+    #     scheduler.remove_job(job_id)
+    # 
+    # scheduler.add_job(
+    #     func=lambda: create_backup(
+    #         description=f'자동 백업 ({schedule.frequency})',
+    #         is_auto=True
+    #     ),
+    #     trigger=trigger,
+    #     id=job_id,
+    #     name=f'Backup Schedule {schedule_id}'
+    # )
+    pass
 
 # 백업 관련 API 엔드포인트
 @app.route('/api/backups', methods=['GET'])
@@ -652,13 +653,13 @@ def update_backup_schedule(id):
     
     db.session.commit()
     
-    # 백업 스케줄 업데이트
-    if schedule.is_active:
-        schedule_backup(schedule.id)
-    else:
-        job_id = f'backup_schedule_{schedule.id}'
-        if job_id in scheduler.get_jobs():
-            scheduler.remove_job(job_id)
+    # 백업 스케줄 업데이트 (배포용으로 비활성화)
+    # if schedule.is_active:
+    #     schedule_backup(schedule.id)
+    # else:
+    #     job_id = f'backup_schedule_{schedule.id}'
+    #     if job_id in scheduler.get_jobs():
+    #         scheduler.remove_job(job_id)
     
     return jsonify(schedule.to_dict())
 
@@ -667,29 +668,29 @@ def update_backup_schedule(id):
 def delete_backup_schedule(id):
     schedule = BackupSchedule.query.get_or_404(id)
     
-    # 스케줄러에서 작업 제거
-    job_id = f'backup_schedule_{schedule.id}'
-    if job_id in scheduler.get_jobs():
-        scheduler.remove_job(job_id)
+    # 스케줄러에서 작업 제거 (배포용으로 비활성화)
+    # job_id = f'backup_schedule_{schedule.id}'
+    # if job_id in scheduler.get_jobs():
+    #     scheduler.remove_job(job_id)
     
     db.session.delete(schedule)
     db.session.commit()
     
     return '', 204
 
-# 기존 스케줄 복원
-@app.before_first_request
-def init_backup_schedules():
-    for schedule in BackupSchedule.query.filter_by(is_active=True).all():
-        schedule_backup(schedule.id)
-    
-    # 매일 자정에 오래된 백업 정리
-    scheduler.add_job(
-        func=cleanup_old_backups,
-        trigger=CronTrigger(hour=0, minute=0),
-        id='cleanup_old_backups',
-        name='Cleanup Old Backups'
-    )
+# 기존 스케줄 복원 (배포용으로 비활성화)
+# @app.before_first_request
+# def init_backup_schedules():
+#     for schedule in BackupSchedule.query.filter_by(is_active=True).all():
+#         schedule_backup(schedule.id)
+#     
+#     # 매일 자정에 오래된 백업 정리
+#     scheduler.add_job(
+#         func=cleanup_old_backups,
+#         trigger=CronTrigger(hour=0, minute=0),
+#         id='cleanup_old_backups',
+#         name='Cleanup Old Backups'
+#     )
 
 # 통계 API 엔드포인트
 @app.route('/api/stats/overview', methods=['GET'])
@@ -787,13 +788,13 @@ def log_member_activity(member_id, activity_type, amount=None, details=None):
     db.session.add(activity)
     db.session.commit()
 
-# 일일 통계 계산 스케줄링
-scheduler.add_job(
-    func=lambda: DailyStats.calculate_stats(date.today()),
-    trigger=CronTrigger(hour=0, minute=5),  # 매일 00:05에 실행
-    id='calculate_daily_stats',
-    name='Calculate Daily Stats'
-)
+# 일일 통계 계산 스케줄링 (배포용으로 비활성화)
+# scheduler.add_job(
+#     func=lambda: DailyStats.calculate_stats(date.today()),
+#     trigger=CronTrigger(hour=0, minute=5),  # 매일 00:05에 실행
+#     id='calculate_daily_stats',
+#     name='Calculate Daily Stats'
+# )
 
 # 데이터베이스 초기화
 with app.app_context():
