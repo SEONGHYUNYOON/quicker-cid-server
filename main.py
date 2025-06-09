@@ -414,10 +414,48 @@ def delete_api_key(id):
     db.session.commit()
     return '', 204
 
-# CID 인증 API 엔드포인트
+# 폰번호 로그인 API 엔드포인트 (메인)
+@app.route('/api/v1/login', methods=['POST'])
+@require_api_key
+def login_by_phone():
+    data = request.json
+    if not data or 'phone' not in data:
+        return jsonify({'error': '전화번호가 필요합니다.'}), 400
+    
+    phone = data['phone']
+    
+    # 폰번호로 회원 찾기
+    member = Member.query.filter_by(phone=phone).first()
+    if not member:
+        return jsonify({
+            'success': False,
+            'error': '등록되지 않은 전화번호입니다.'
+        }), 401
+    
+    # 만료일 확인
+    if member.expiry_date < datetime.now().date():
+        return jsonify({
+            'success': False,
+            'error': '이용기간이 만료되었습니다.'
+        }), 401
+    
+    # 해당 회원의 활성 CID 목록 가져오기
+    active_cids = [cid.cid_value for cid in member.cids if cid.is_active]
+    
+    return jsonify({
+        'success': True,
+        'member': {
+            'name': member.name,
+            'phone': member.phone,
+            'expiry_date': member.expiry_date.strftime('%Y-%m-%d'),
+            'cids': active_cids,  # 사용 가능한 CID 목록 (계정 확장용)
+            'cid_count': len(active_cids)
+        }
+    })
+
+# CID 인증 API 엔드포인트 (기존 - 하위 호환성)
 @app.route('/api/v1/verify', methods=['POST'])
 @require_api_key
-# @limiter.limit("10/minute")  # 배달앱 특성상 실시간 접속이 중요하므로 제한 해제
 def verify_cid():
     data = request.json
     if not data or 'cid' not in data:
@@ -443,14 +481,12 @@ def verify_cid():
             'message': '사용 기간이 만료되었습니다.'
         })
     
-    # 마지막 인증 시간 업데이트
-    cid.last_verified_at = datetime.utcnow()
-    db.session.commit()
-    
     return jsonify({
         'valid': True,
         'message': '인증되었습니다.',
-        'expiry_date': member.expiry_date.strftime('%Y-%m-%d')
+        'expiry_date': member.expiry_date.strftime('%Y-%m-%d'),
+        'member_name': member.name,
+        'member_phone': member.phone
     })
 
 @app.route('/api/logs', methods=['GET'])
