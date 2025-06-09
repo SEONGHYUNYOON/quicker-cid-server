@@ -210,37 +210,71 @@ def get_member(id):
 @app.route('/api/members', methods=['POST'])
 @login_required
 def add_member():
-    data = request.json
-    member = Member(
-        name=data['name'],
-        phone=data['phone'],
-        registration_date=parse(data['registration_date']),
-        expiry_date=parse(data['expiry_date']),
-        deposit_amount=data.get('deposit_amount', 0),
-        referrer=data.get('referrer', '')
-    )
-    db.session.add(member)
-    db.session.flush()  # member.id를 얻기 위해 flush
-    
-    for cid_value in data.get('cids', []):
-        cid = CID(
-            cid_value=cid_value, 
-            member_id=member.id,
-            is_active=True
+    try:
+        data = request.json
+        print(f"[DEBUG] Received member data: {data}")
+        
+        # 필수 필드 검증
+        required_fields = ['name', 'phone', 'registration_date', 'expiry_date']
+        for field in required_fields:
+            if not data or not data.get(field):
+                error_msg = f'{field}은(는) 필수 입력 항목입니다.'
+                print(f"[DEBUG] Validation error: {error_msg}")
+                return jsonify({'error': error_msg}), 400
+        
+        # 전화번호 중복 검사
+        existing_member = Member.query.filter_by(phone=data['phone']).first()
+        if existing_member:
+            error_msg = '이미 등록된 전화번호입니다.'
+            print(f"[DEBUG] Duplicate phone error: {data['phone']}")
+            return jsonify({'error': error_msg}), 400
+        
+        # 날짜 파싱
+        try:
+            registration_date = parse(data['registration_date'])
+            expiry_date = parse(data['expiry_date'])
+        except Exception as e:
+            error_msg = '날짜 형식이 올바르지 않습니다.'
+            print(f"[DEBUG] Date parsing error: {e}")
+            return jsonify({'error': error_msg}), 400
+        
+        member = Member(
+            name=data['name'],
+            phone=data['phone'],
+            registration_date=registration_date,
+            expiry_date=expiry_date,
+            deposit_amount=data.get('deposit_amount', 0),
+            referrer=data.get('referrer', '')
         )
-        db.session.add(cid)
-    
-    db.session.commit()
-    
-    # 활동 기록
-    log_member_activity(
-        member.id,
-        'registration',
-        amount=member.deposit_amount,
-        details=f'CID 수: {len(data.get("cids", []))}'
-    )
-    
-    return jsonify(member.to_dict())
+        db.session.add(member)
+        db.session.flush()  # member.id를 얻기 위해 flush
+        
+        for cid_value in data.get('cids', []):
+            cid = CID(
+                cid_value=cid_value, 
+                member_id=member.id,
+                is_active=True
+            )
+            db.session.add(cid)
+        
+        db.session.commit()
+        
+        # 활동 기록
+        log_member_activity(
+            member.id,
+            'registration',
+            amount=member.deposit_amount,
+            details=f'CID 수: {len(data.get("cids", []))}'
+        )
+        
+        print(f"[DEBUG] Member created successfully: ID={member.id}, Name={member.name}")
+        return jsonify(member.to_dict())
+        
+    except Exception as e:
+        db.session.rollback()
+        error_msg = f'회원 등록 중 오류가 발생했습니다: {str(e)}'
+        print(f"[DEBUG] Unexpected error: {e}")
+        return jsonify({'error': error_msg}), 500
 
 @app.route('/api/members/<int:id>', methods=['PUT'])
 @login_required
@@ -459,10 +493,14 @@ def test_status():
     """서버 상태 테스트용 엔드포인트 (인증 불필요)"""
     try:
         member_count = Member.query.count()
+        members = Member.query.all()
+        member_list = [{'id': m.id, 'name': m.name, 'phone': m.phone} for m in members]
+        
         return jsonify({
             'status': 'ok',
             'database': 'connected',
             'member_count': member_count,
+            'members': member_list,
             'timestamp': datetime.utcnow().isoformat()
         })
     except Exception as e:
