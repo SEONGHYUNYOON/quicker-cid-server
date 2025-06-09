@@ -492,6 +492,10 @@ def login_by_phone():
 def test_status():
     """서버 상태 테스트용 엔드포인트 (인증 불필요)"""
     try:
+        import os
+        database_url = os.environ.get('DATABASE_URL', 'Not set')
+        current_db_uri = app.config.get('SQLALCHEMY_DATABASE_URI', 'Not configured')
+        
         member_count = Member.query.count()
         members = Member.query.all()
         member_list = [{'id': m.id, 'name': m.name, 'phone': m.phone} for m in members]
@@ -499,6 +503,9 @@ def test_status():
         return jsonify({
             'status': 'ok',
             'database': 'connected',
+            'database_type': 'PostgreSQL' if 'postgresql://' in current_db_uri else 'SQLite',
+            'database_url_set': 'Yes' if database_url != 'Not set' else 'No',
+            'current_db_uri': current_db_uri[:50] + '...' if len(current_db_uri) > 50 else current_db_uri,
             'member_count': member_count,
             'members': member_list,
             'timestamp': datetime.utcnow().isoformat()
