@@ -932,5 +932,31 @@ with app.app_context():
         db.create_all()
         print("Database tables created.")
 
+@app.route('/api/test/tables', methods=['GET'])
+def test_tables():
+    """데이터베이스 테이블 상태 확인"""
+    try:
+        from sqlalchemy import inspect
+        inspector = inspect(db.engine)
+        existing_tables = inspector.get_table_names()
+        
+        # Admin 테이블 확인
+        admin_exists = 'admin' in existing_tables
+        admin_count = Admin.query.count() if admin_exists else 0
+        
+        return jsonify({
+            'status': 'ok',
+            'existing_tables': existing_tables,
+            'admin_table_exists': admin_exists,
+            'admin_count': admin_count,
+            'timestamp': datetime.utcnow().isoformat()
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'error': str(e),
+            'timestamp': datetime.utcnow().isoformat()
+        }), 500
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
