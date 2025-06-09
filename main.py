@@ -106,20 +106,8 @@ def require_api_key(f):
 @app.route('/')
 def index():
     try:
-        # 템플릿 없이 간단한 HTML 반환
-        return """
-        <html>
-        <head><title>Quicker Admin Login</title></head>
-        <body>
-            <h1>Quicker CID Server Login</h1>
-            <form method="POST" action="/login">
-                <p>Password: <input type="password" name="password" required></p>
-                <p><input type="submit" value="Login"></p>
-            </form>
-            <p><a href="/api/test/status">Test Status</a></p>
-        </body>
-        </html>
-        """
+        # 아름다운 로그인 템플릿 사용
+        return render_template('login.html')
     except Exception as e:
         return f"""
         <h1>Index Error</h1>
@@ -155,46 +143,14 @@ def login():
         
         # 비밀번호 확인 (간단하게)
         if admin.check_password(password):
-            # 로그인 성공 - 간단한 대시보드 반환
-            members = Member.query.all()
-            member_list = ''.join([f'<li>{m.name} ({m.phone})</li>' for m in members])
-            
-            return f"""
-            <html>
-            <head><title>Quicker Dashboard</title></head>
-            <body>
-                <h1>Quicker CID Dashboard</h1>
-                <p>Login successful!</p>
-                
-                <h2>Add New Member</h2>
-                <form method="POST" action="/add_member">
-                    <p>Name: <input type="text" name="name" required></p>
-                    <p>Phone: <input type="text" name="phone" required></p>
-                    <p>Registration Date: <input type="date" name="registration_date" required></p>
-                    <p>Expiry Date: <input type="date" name="expiry_date" required></p>
-                    <p>Deposit Amount: <input type="number" name="deposit_amount" value="0"></p>
-                    <p>Referrer: <input type="text" name="referrer"></p>
-                    <p>CID: <input type="text" name="cid" placeholder="Optional"></p>
-                    <p><input type="submit" value="Add Member"></p>
-                </form>
-                
-                <h2>Members ({len(members)})</h2>
-                <ul>{member_list}</ul>
-                <p><a href="/logout">Logout</a></p>
-                <p><a href="/api/test/status">Test Status</a></p>
-            </body>
-            </html>
-            """
+            # 로그인 성공 - 세션 설정하고 대시보드로 리다이렉트
+            from flask_login import login_user
+            login_user(admin)
+            return redirect(url_for('dashboard'))
         else:
-            return """
-            <html>
-            <body>
-                <h1>Login Failed</h1>
-                <p>Invalid password. Try password: 4568</p>
-                <p><a href="/">Back to Login</a></p>
-            </body>
-            </html>
-            """
+            # 로그인 실패 - 플래시 메시지와 함께 로그인 페이지로
+            flash('비밀번호가 올바르지 않습니다.')
+            return redirect(url_for('index'))
             
     except Exception as e:
         return f"""
