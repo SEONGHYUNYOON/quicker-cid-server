@@ -417,7 +417,7 @@ def delete_api_key(id):
 # CID 인증 API 엔드포인트
 @app.route('/api/v1/verify', methods=['POST'])
 @require_api_key
-@limiter.limit("10/minute")
+# @limiter.limit("10/minute")  # 배달앱 특성상 실시간 접속이 중요하므로 제한 해제
 def verify_cid():
     data = request.json
     if not data or 'cid' not in data:
