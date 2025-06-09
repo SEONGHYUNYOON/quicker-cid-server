@@ -454,6 +454,25 @@ def login_by_phone():
     })
 
 # CID 인증 API 엔드포인트 (기존 - 하위 호환성)
+@app.route('/api/test/status', methods=['GET'])
+def test_status():
+    """서버 상태 테스트용 엔드포인트 (인증 불필요)"""
+    try:
+        member_count = Member.query.count()
+        return jsonify({
+            'status': 'ok',
+            'database': 'connected',
+            'member_count': member_count,
+            'timestamp': datetime.utcnow().isoformat()
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'database': 'disconnected',
+            'error': str(e),
+            'timestamp': datetime.utcnow().isoformat()
+        }), 500
+
 @app.route('/api/v1/verify', methods=['POST'])
 @require_api_key
 def verify_cid():
