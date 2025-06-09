@@ -805,9 +805,19 @@ def log_member_activity(member_id, activity_type, amount=None, details=None):
 #     name='Calculate Daily Stats'
 # )
 
-# 데이터베이스 초기화
+# 데이터베이스 초기화 (테이블이 없을 때만)
 with app.app_context():
-    db.create_all()
+    # 개발환경에서만 강제 생성, 프로덕션에서는 exist_ok 방식 사용
+    if app.config.get('DEBUG', False):
+        db.create_all()
+    else:
+        # 프로덕션에서는 테이블이 없을 때만 생성
+        try:
+            # 간단한 쿼리로 테이블 존재 확인
+            Admin.query.first()
+        except:
+            # 테이블이 없으면 생성
+            db.create_all()
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
