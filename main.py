@@ -841,19 +841,32 @@ def log_member_activity(member_id, activity_type, amount=None, details=None):
 #     name='Calculate Daily Stats'
 # )
 
-# 데이터베이스 초기화 (테이블이 없을 때만)
+# 데이터베이스 초기화 (테이블이 없을 때만 - 안전한 방식)
 with app.app_context():
-    # 개발환경에서만 강제 생성, 프로덕션에서는 exist_ok 방식 사용
-    if app.config.get('DEBUG', False):
-        db.create_all()
-    else:
-        # 프로덕션에서는 테이블이 없을 때만 생성
-        try:
-            # 간단한 쿼리로 테이블 존재 확인
-            Admin.query.first()
-        except:
-            # 테이블이 없으면 생성
+    try:
+        # Inspector를 사용하여 테이블 존재 확인
+        from sqlalchemy import inspect
+        inspector = inspect(db.engine)
+        existing_tables = inspector.get_table_names()
+        
+        # 필수 테이블들이 없을 때만 생성
+        required_tables = ['member', 'cid', 'admin']
+        missing_tables = [table for table in required_tables if table not in existing_tables]
+        
+        if missing_tables:
+            print(f"Missing tables detected: {missing_tables}")
+            print("Creating database tables...")
             db.create_all()
+            print("Database tables created successfully.")
+        else:
+            print("All required tables exist. Skipping table creation.")
+            
+    except Exception as e:
+        print(f"Database initialization error: {e}")
+        # 테이블 확인 실패 시에만 생성 시도
+        print("Attempting to create tables...")
+        db.create_all()
+        print("Database tables created.")
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

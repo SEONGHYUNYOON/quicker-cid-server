@@ -13,10 +13,17 @@ class ProductionConfig(Config):
     SECRET_KEY = os.environ.get('SECRET_KEY')
     # Render에서 자동으로 제공하는 PostgreSQL URL 사용
     database_url = os.environ.get('DATABASE_URL')
-    if database_url and database_url.startswith('postgres://'):
-        # Render의 postgres:// URL을 postgresql://로 변경
-        database_url = database_url.replace('postgres://', 'postgresql://', 1)
-    SQLALCHEMY_DATABASE_URI = database_url or 'sqlite:///quicker.db'
+    if database_url:
+        print(f"DATABASE_URL found: {database_url[:50]}...")  # 로그용 (보안상 일부만)
+        if database_url.startswith('postgres://'):
+            # Render의 postgres:// URL을 postgresql://로 변경
+            database_url = database_url.replace('postgres://', 'postgresql://', 1)
+            print("Converted postgres:// to postgresql://")
+        SQLALCHEMY_DATABASE_URI = database_url
+        print("Using PostgreSQL database")
+    else:
+        print("No DATABASE_URL found, falling back to SQLite")
+        SQLALCHEMY_DATABASE_URI = 'sqlite:///quicker.db'
     
 class DevelopmentConfig(Config):
     DEBUG = True

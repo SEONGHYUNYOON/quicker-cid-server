@@ -9,6 +9,10 @@ services:
         value: 3.11.4
       - key: FLASK_ENV
         value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: quicker-cid-database
+          property: connectionString
 
 databases:
   - name: quicker-cid-database
