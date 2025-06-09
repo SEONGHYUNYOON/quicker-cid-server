@@ -534,7 +534,7 @@
 
         // 회원 목록 로드
         function loadMembers() {
-            fetch('/api/members')
+            fetch('/api/members', { credentials: 'same-origin' })
                 .then(response => response.json())
                 .then(members => {
                     const tbody = document.getElementById('membersList');
@@ -723,6 +723,7 @@
                 headers: {
                     'Content-Type': 'application/json'
                 },
+                credentials: 'same-origin',  // 쿠키/세션 포함
                 body: JSON.stringify(data)
             })
             .then(response => response.json())
@@ -802,6 +803,7 @@
                 headers: {
                     'Content-Type': 'application/json'
                 },
+                credentials: 'same-origin',
                 body: JSON.stringify({
                     current_password: currentPassword,
                     new_password: newPassword,
@@ -845,7 +847,7 @@
         }
 
         function loadApiKeys() {
-            fetch('/api/keys')
+            fetch('/api/keys', { credentials: 'same-origin' })
                 .then(response => response.json())
                 .then(keys => {
                     const tbody = document.getElementById('apiKeysList');
@@ -883,6 +885,7 @@
                 headers: {
                     'Content-Type': 'application/json'
                 },
+                credentials: 'same-origin',
                 body: JSON.stringify({ name })
             })
             .then(response => response.json())
