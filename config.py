@@ -10,7 +10,7 @@ class Config:
 
 class ProductionConfig(Config):
     DEBUG = False
-    SECRET_KEY = os.environ.get('SECRET_KEY')
+    SECRET_KEY = os.environ.get('SECRET_KEY') or 'quicker-cid-server-secret-key-production-2024'
     # Render에서 자동으로 제공하는 PostgreSQL URL 사용
     database_url = os.environ.get('DATABASE_URL')
     if database_url:
