@@ -139,7 +139,8 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label">전화번호</label>
-                        <input type="text" class="form-control" name="phone" required>
+                        <input type="text" class="form-control" name="phone" required onblur="checkPhoneDuplicate(this)">
+                        <div id="phoneValidation" class="form-text"></div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">등록일</label>
@@ -725,9 +726,20 @@
                 body: JSON.stringify(data)
             })
             .then(response => response.json())
-            .then(() => {
-                loadMembers();
-                hideAddMemberForm();
+            .then(result => {
+                if (result.error) {
+                    // 🎯 Toast로 에러 알림! (더 세련된 방식)
+                    showToast('error', result.error);
+                } else {
+                    // 성공시에만 목록 새로고침
+                    showToast('success', '회원이 성공적으로 등록되었습니다!');
+                    loadMembers();
+                    hideAddMemberForm();
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showToast('error', '회원 등록 중 오류가 발생했습니다.');
             });
         };
 
@@ -1308,6 +1320,73 @@
             }
         `;
         document.head.appendChild(style);
+        // Toast 알림 시스템 추가
+        function showToast(type, message) {
+            const toastContainer = document.getElementById('toastContainer') || createToastContainer();
+            
+            const toastHtml = `
+                <div class="toast" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="5000">
+                    <div class="toast-header ${type === 'success' ? 'bg-success' : 'bg-danger'} text-white">
+                        <strong class="me-auto">${type === 'success' ? '성공' : '오류'}</strong>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
+                    </div>
+                    <div class="toast-body">
+                        ${message}
+                    </div>
+                </div>
+            `;
+            
+            toastContainer.insertAdjacentHTML('beforeend', toastHtml);
+            const toastElement = toastContainer.lastElementChild;
+            const toast = new bootstrap.Toast(toastElement);
+            toast.show();
+            
+            // Toast가 숨겨진 후 DOM에서 제거
+            toastElement.addEventListener('hidden.bs.toast', () => {
+                toastElement.remove();
+            });
+        }
+        
+        function createToastContainer() {
+            const container = document.createElement('div');
+            container.id = 'toastContainer';
+            container.className = 'toast-container position-fixed top-0 end-0 p-3';
+            container.style.zIndex = '9999';
+            document.body.appendChild(container);
+            return container;
+        }
+        
+        // 실시간 전화번호 중복 검사
+        function checkPhoneDuplicate(input) {
+            const phone = input.value.trim();
+            const validationDiv = document.getElementById('phoneValidation');
+            
+            if (!phone) {
+                validationDiv.innerHTML = '';
+                input.classList.remove('is-valid', 'is-invalid');
+                return;
+            }
+            
+            fetch('/api/members')
+                .then(response => response.json())
+                .then(members => {
+                    const isDuplicate = members.some(member => member.phone === phone);
+                    
+                    if (isDuplicate) {
+                        input.classList.remove('is-valid');
+                        input.classList.add('is-invalid');
+                        validationDiv.innerHTML = '<span class="text-danger">⚠️ 이미 등록된 전화번호입니다!</span>';
+                    } else {
+                        input.classList.remove('is-invalid');
+                        input.classList.add('is-valid');
+                        validationDiv.innerHTML = '<span class="text-success">✅ 사용 가능한 전화번호입니다!</span>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    validationDiv.innerHTML = '<span class="text-warning">⚠️ 중복 검사 중 오류가 발생했습니다.</span>';
+                });
+        }
     </script>
 </body>
 </html> 
