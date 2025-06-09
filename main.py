@@ -106,70 +106,90 @@ def require_api_key(f):
 @app.route('/')
 def index():
     try:
-        if current_user.is_authenticated:
-            return redirect(url_for('dashboard'))
-        return render_template('login.html')
+        # 템플릿 없이 간단한 HTML 반환
+        return """
+        <html>
+        <head><title>Quicker Admin Login</title></head>
+        <body>
+            <h1>Quicker CID Server Login</h1>
+            <form method="POST" action="/login">
+                <p>Password: <input type="password" name="password" required></p>
+                <p><input type="submit" value="Login"></p>
+            </form>
+            <p><a href="/api/test/status">Test Status</a></p>
+        </body>
+        </html>
+        """
     except Exception as e:
-        # 에러 발생 시 디버그 정보 반환
         return f"""
-        <h1>Debug Info</h1>
+        <h1>Index Error</h1>
         <p><strong>Error:</strong> {str(e)}</p>
         <p><strong>Database URI:</strong> {app.config.get('SQLALCHEMY_DATABASE_URI', 'Not set')[:50]}...</p>
-        <p><a href="/api/test/status">Test Status</a></p>
         """
 
 @app.route('/login', methods=['POST'])
 def login():
-    password = request.form.get('password')
-    admin = Admin.query.filter_by(username='admin').first()
-    
-    # 관리자 계정이 없으면 생성 (최초 실행 시)
-    if not admin:
-        admin = Admin(username='admin')
-        admin.set_password('4568')  # 초기 비밀번호
-        db.session.add(admin)
-        db.session.commit()
-    
-    # 계정 잠금 확인
-    if admin.is_locked:
-        lock_time = admin.last_attempt + timedelta(minutes=LOCK_TIME_MINUTES)
-        if datetime.utcnow() < lock_time:
-            remaining_minutes = int((lock_time - datetime.utcnow()).total_seconds() / 60)
-            flash(f'계정이 잠겼습니다. {remaining_minutes}분 후에 다시 시도해주세요.')
-            return redirect(url_for('index'))
+    try:
+        password = request.form.get('password')
+        
+        # Admin 테이블 존재 확인
+        from sqlalchemy import inspect
+        inspector = inspect(db.engine)
+        existing_tables = inspector.get_table_names()
+        
+        if 'admin' not in existing_tables:
+            return f"""
+            <h1>Database Setup Required</h1>
+            <p>Admin table does not exist. Tables: {existing_tables}</p>
+            <p><a href="/">Back to Login</a></p>
+            """
+        
+        admin = Admin.query.filter_by(username='admin').first()
+        
+        # 관리자 계정이 없으면 생성 (최초 실행 시)
+        if not admin:
+            admin = Admin(username='admin')
+            admin.set_password('4568')  # 초기 비밀번호
+            db.session.add(admin)
+            db.session.commit()
+        
+        # 비밀번호 확인 (간단하게)
+        if admin.check_password(password):
+            # 로그인 성공 - 간단한 대시보드 반환
+            members = Member.query.all()
+            member_list = ''.join([f'<li>{m.name} ({m.phone})</li>' for m in members])
+            
+            return f"""
+            <html>
+            <head><title>Quicker Dashboard</title></head>
+            <body>
+                <h1>Quicker CID Dashboard</h1>
+                <p>Login successful!</p>
+                <h2>Members ({len(members)})</h2>
+                <ul>{member_list}</ul>
+                <p><a href="/logout">Logout</a></p>
+                <p><a href="/api/test/status">Test Status</a></p>
+            </body>
+            </html>
+            """
         else:
-            admin.is_locked = False
-            admin.login_attempts = 0
-    
-    # 비밀번호 확인
-    if admin.check_password(password):
-        login_user(admin)
-        admin.last_login = datetime.utcnow()
-        admin.login_attempts = 0
-        db.session.commit()
-        
-        # 로그인 성공 기록
-        log_login_attempt('admin', True, request.remote_addr, request.user_agent.string)
-        
-        return redirect(url_for('dashboard'))
-    else:
-        # 로그인 실패 처리
-        admin.login_attempts += 1
-        admin.last_attempt = datetime.utcnow()
-        
-        if admin.login_attempts >= MAX_LOGIN_ATTEMPTS:
-            admin.is_locked = True
-            flash(f'로그인 시도 횟수를 초과했습니다. {LOCK_TIME_MINUTES}분 후에 다시 시도해주세요.')
-        else:
-            remaining_attempts = MAX_LOGIN_ATTEMPTS - admin.login_attempts
-            flash(f'비밀번호가 올바르지 않습니다. 남은 시도 횟수: {remaining_attempts}회')
-        
-        db.session.commit()
-        
-        # 로그인 실패 기록
-        log_login_attempt('admin', False, request.remote_addr, request.user_agent.string)
-        
-        return redirect(url_for('index'))
+            return """
+            <html>
+            <body>
+                <h1>Login Failed</h1>
+                <p>Invalid password. Try password: 4568</p>
+                <p><a href="/">Back to Login</a></p>
+            </body>
+            </html>
+            """
+            
+    except Exception as e:
+        return f"""
+        <h1>Login Error</h1>
+        <p><strong>Error:</strong> {str(e)}</p>
+        <p><strong>Password received:</strong> {request.form.get('password', 'None')}</p>
+        <p><a href="/">Back to Login</a></p>
+        """
 
 @app.route('/logout')
 @login_required
