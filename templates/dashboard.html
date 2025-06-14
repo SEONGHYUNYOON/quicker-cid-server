@@ -429,33 +429,33 @@
         </form>
     </div>
 
-    <!-- 비밀번호 변경 모달 -->
+    <!-- Password Change Modal -->
     <div class="modal fade" id="changePasswordModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">비밀번호 변경</h5>
+                    <h5 class="modal-title">Change Password</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <form id="changePasswordForm">
                         <div class="mb-3">
-                            <label class="form-label">현재 비밀번호</label>
+                            <label class="form-label">Current Password</label>
                             <input type="password" class="form-control" id="currentPassword" required>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">새 비밀번호</label>
+                            <label class="form-label">New Password</label>
                             <input type="password" class="form-control" id="newPassword" required>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">새 비밀번호 확인</label>
+                            <label class="form-label">Confirm New Password</label>
                             <input type="password" class="form-control" id="confirmPassword" required>
                         </div>
                     </form>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
-                    <button type="button" class="btn btn-primary" onclick="changePassword()">변경</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="changePassword()">Change</button>
                 </div>
             </div>
         </div>
@@ -526,13 +526,13 @@
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
-        // 날짜 선택기 초기화
+        // Date picker initialization
         flatpickr(".datepicker", {
             dateFormat: "Y-m-d",
-            locale: "ko"
+            locale: "en"
         });
 
-        // 회원 목록 로드
+        // Load member list
         function loadMembers() {
             fetch('/api/members', { credentials: 'same-origin' })
                 .then(response => response.json())
@@ -551,8 +551,8 @@
                             rowClass = 'expiring-soon';
                         }
 
-                        // 금액에 천단위 콤마 추가
-                        const formattedAmount = member.deposit_amount.toLocaleString() + '원';
+                        // Add thousand separator to amount
+                        const formattedAmount = member.deposit_amount.toLocaleString() + ' KRW';
 
                         tbody.innerHTML += `
                             <tr class="${rowClass}">
@@ -1173,8 +1173,8 @@
                     document.getElementById('avgDailyCalls').textContent = Math.round(data.api.total_calls / days).toLocaleString();
                     
                     // 입금 현황
-                    document.getElementById('totalDeposit').textContent = data.members.total_deposit.toLocaleString() + '원';
-                    document.getElementById('avgDeposit').textContent = Math.round(data.members.avg_deposit).toLocaleString() + '원';
+                    document.getElementById('totalDeposit').textContent = data.members.total_deposit.toLocaleString() + ' KRW';
+                    document.getElementById('avgDeposit').textContent = Math.round(data.members.avg_deposit).toLocaleString() + ' KRW';
                 });
             
             // 일별 통계 로드
@@ -1269,7 +1269,7 @@
                         <div class="activity-item">
                             <div class="activity-time">${activity.timestamp}</div>
                             <div class="activity-type">${formatActivityType(activity.activity_type)}</div>
-                            ${activity.amount ? `<div class="activity-amount">${activity.amount.toLocaleString()}원</div>` : ''}
+                            ${activity.amount ? `<div class="activity-amount">${activity.amount.toLocaleString()} KRW</div>` : ''}
                             ${activity.details ? `<div class="activity-details">${activity.details}</div>` : ''}
                         </div>
                     `).join('');
@@ -1330,7 +1330,7 @@
             const toastHtml = `
                 <div class="toast" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="5000">
                     <div class="toast-header ${type === 'success' ? 'bg-success' : 'bg-danger'} text-white">
-                        <strong class="me-auto">${type === 'success' ? '성공' : '오류'}</strong>
+                        <strong class="me-auto">${type === 'success' ? 'Success' : 'Error'}</strong>
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
                     </div>
                     <div class="toast-body">
@@ -1359,7 +1359,7 @@
             return container;
         }
         
-        // 실시간 전화번호 중복 검사
+        // Real-time phone number duplicate check
         function checkPhoneDuplicate(input) {
             const phone = input.value.trim();
             const validationDiv = document.getElementById('phoneValidation');
@@ -1378,16 +1378,16 @@
                     if (isDuplicate) {
                         input.classList.remove('is-valid');
                         input.classList.add('is-invalid');
-                        validationDiv.innerHTML = '<span class="text-danger">⚠️ 이미 등록된 전화번호입니다!</span>';
+                        validationDiv.innerHTML = '<span class="text-danger">⚠️ This phone number is already registered!</span>';
                     } else {
                         input.classList.remove('is-invalid');
                         input.classList.add('is-valid');
-                        validationDiv.innerHTML = '<span class="text-success">✅ 사용 가능한 전화번호입니다!</span>';
+                        validationDiv.innerHTML = '<span class="text-success">✅ This phone number is available!</span>';
                     }
                 })
                 .catch(error => {
                     console.error('Error:', error);
-                    validationDiv.innerHTML = '<span class="text-warning">⚠️ 중복 검사 중 오류가 발생했습니다.</span>';
+                    validationDiv.innerHTML = '<span class="text-warning">⚠️ Error occurred during duplicate check.</span>';
                 });
         }
     </script>

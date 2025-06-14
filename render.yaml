@@ -1,3 +1,4 @@
+# Web service configuration for Quicker CID Server
 services:
   - type: web
     name: quicker-cid-server
@@ -14,6 +15,7 @@ services:
           name: quicker-cid-database
           property: connectionString
 
+# Database configuration
 databases:
   - name: quicker-cid-database
     databaseName: quicker_cid_db

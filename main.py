@@ -78,17 +78,17 @@ def require_api_key(f):
     def decorated_function(*args, **kwargs):
         api_key = request.headers.get('X-API-Key')
         if not api_key:
-            return jsonify({'error': 'API 키가 필요합니다.'}), 401
+            return jsonify({'error': 'API key is required.'}), 401
         
         key = ApiKey.query.filter_by(key=api_key, is_active=True).first()
         if not key:
-            return jsonify({'error': '유효하지 않은 API 키입니다.'}), 401
+            return jsonify({'error': 'Invalid API key.'}), 401
         
-        # API 키 사용 시간 업데이트
+        # API key usage time update
         key.last_used_at = datetime.utcnow()
         db.session.commit()
         
-        # API 요청 로깅
+        # API request logging
         log = ApiLog(
             api_key_id=key.id,
             endpoint=request.path,
@@ -485,7 +485,7 @@ def list_api_keys():
 def create_api_key():
     data = request.json
     if not data or 'name' not in data:
-        return jsonify({'error': '이름이 필요합니다.'}), 400
+        return jsonify({'error': 'Name is required.'}), 400
     
     key = ApiKey(
         key=ApiKey.generate_key(),
@@ -510,26 +510,26 @@ def delete_api_key(id):
 def login_by_phone():
     data = request.json
     if not data or 'phone' not in data:
-        return jsonify({'error': '전화번호가 필요합니다.'}), 400
+        return jsonify({'error': 'Phone number is required.'}), 400
     
     phone = data['phone']
     
-    # 폰번호로 회원 찾기
+    # Find member by phone number
     member = Member.query.filter_by(phone=phone).first()
     if not member:
         return jsonify({
             'success': False,
-            'error': '등록되지 않은 전화번호입니다.'
+            'error': 'Unregistered phone number.'
         }), 401
     
-    # 만료일 확인
+    # Check expiration date
     if member.expiry_date < datetime.now().date():
         return jsonify({
             'success': False,
-            'error': '이용기간이 만료되었습니다.'
+            'error': 'Service period has expired.'
         }), 401
     
-    # 해당 회원의 활성 CID 목록 가져오기
+    # Get active CIDs for the member
     active_cids = [cid.cid_value for cid in member.cids if cid.is_active]
     
     return jsonify({
@@ -538,7 +538,7 @@ def login_by_phone():
             'name': member.name,
             'phone': member.phone,
             'expiry_date': member.expiry_date.strftime('%Y-%m-%d'),
-            'cids': active_cids,  # 사용 가능한 CID 목록 (계정 확장용)
+            'cids': active_cids,  # Available CID list (for account extension)
             'cid_count': len(active_cids)
         }
     })
@@ -579,31 +579,31 @@ def test_status():
 def verify_cid():
     data = request.json
     if not data or 'cid' not in data:
-        return jsonify({'error': 'CID가 필요합니다.'}), 400
+        return jsonify({'error': 'CID is required.'}), 400
     
     cid = CID.query.filter_by(cid_value=data['cid']).first()
     if not cid:
         return jsonify({
             'valid': False,
-            'message': '등록되지 않은 CID입니다.'
+            'message': 'Unregistered CID.'
         })
     
     if not cid.is_active:
         return jsonify({
             'valid': False,
-            'message': '비활성화된 CID입니다.'
+            'message': 'Deactivated CID.'
         })
     
     member = Member.query.get(cid.member_id)
     if member.expiry_date < datetime.now():
         return jsonify({
             'valid': False,
-            'message': '사용 기간이 만료되었습니다.'
+            'message': 'Service period has expired.'
         })
     
     return jsonify({
         'valid': True,
-        'message': '인증되었습니다.',
+        'message': 'Verified.',
         'expiry_date': member.expiry_date.strftime('%Y-%m-%d'),
         'member_name': member.name,
         'member_phone': member.phone
@@ -747,7 +747,7 @@ def delete_backup(id):
     
     # 자동 백업은 삭제 불가
     if backup.is_auto:
-        return jsonify({'error': '자동 백업은 삭제할 수 없습니다.'}), 400
+        return jsonify({'error': 'Automatic backup cannot be deleted.'}), 400
     
     backup_path = os.path.join(BACKUP_DIR, backup.filename)
     if os.path.exists(backup_path):
@@ -763,7 +763,7 @@ def delete_backup(id):
 def restore_backup_api(id):
     try:
         restore_backup(id)
-        return jsonify({'message': '백업이 성공적으로 복원되었습니다.'})
+        return jsonify({'message': 'Backup restored successfully.'})
     except Exception as e:
         return jsonify({'error': str(e)}), 400
 
@@ -778,12 +778,12 @@ def list_backup_schedules():
 def create_backup_schedule():
     data = request.json
     if not data or 'frequency' not in data or 'time' not in data:
-        return jsonify({'error': '필수 정보가 누락되었습니다.'}), 400
+        return jsonify({'error': 'Missing required information.'}), 400
     
     try:
         schedule_time = datetime.strptime(data['time'], '%H:%M').time()
     except ValueError:
-        return jsonify({'error': '잘못된 시간 형식입니다.'}), 400
+        return jsonify({'error': 'Invalid time format.'}), 400
     
     schedule = BackupSchedule(
         frequency=data['frequency'],
@@ -810,7 +810,7 @@ def update_backup_schedule(id):
         try:
             schedule.time = datetime.strptime(data['time'], '%H:%M').time()
         except ValueError:
-            return jsonify({'error': '잘못된 시간 형식입니다.'}), 400
+            return jsonify({'error': 'Invalid time format.'}), 400
     if 'retention_days' in data:
         schedule.retention_days = data['retention_days']
     if 'is_active' in data:
