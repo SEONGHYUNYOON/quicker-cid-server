@@ -2,6 +2,7 @@
 from datetime import datetime, timedelta, time, date
 from models import db, Member, CID, Admin, LoginLog, ApiKey, ApiLog, Backup, BackupSchedule, DailyStats, MemberActivity
 import os
+import logging
 from openpyxl import Workbook
 from dateutil.parser import parse
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
@@ -16,13 +17,22 @@ import shutil
 # from apscheduler.triggers.cron import CronTrigger
 from sqlalchemy.sql import func
 
+# 로깅 설정
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 app = Flask(__name__)
 
 # 환경별 설정 로드
 from config import config
 import os
 config_name = os.environ.get('FLASK_ENV', 'development')
+logger.info(f"Loading configuration for environment: {config_name}")
 app.config.from_object(config[config_name])
+
+# 데이터베이스 URI 로깅 (보안을 위해 일부만)
+db_uri = app.config.get('SQLALCHEMY_DATABASE_URI', 'Not set')
+logger.info(f"Database URI: {db_uri[:50]}...")
 
 # Flask-Login 설정
 login_manager = LoginManager()
@@ -38,6 +48,16 @@ limiter = Limiter(
 
 db.init_app(app)
 
+# 데이터베이스 초기화
+with app.app_context():
+    try:
+        logger.info("Initializing database...")
+        db.create_all()
+        logger.info("Database initialization completed")
+    except Exception as e:
+        logger.error(f"Database initialization failed: {str(e)}")
+        raise
+
 # 로그인 시도 제한 설정
 MAX_LOGIN_ATTEMPTS = 5
 LOCK_TIME_MINUTES = 30
@@ -46,6 +66,7 @@ LOCK_TIME_MINUTES = 30
 BACKUP_DIR = 'backups'
 if not os.path.exists(BACKUP_DIR):
     os.makedirs(BACKUP_DIR)
+    logger.info(f"Created backup directory: {BACKUP_DIR}")
 
 # 백업 스케줄러 설정 (배포용으로 비활성화)
 # scheduler = BackgroundScheduler()
@@ -106,9 +127,10 @@ def require_api_key(f):
 @app.route('/')
 def index():
     try:
-        # 아름다운 로그인 템플릿 사용
+        logger.info("Accessing index page")
         return render_template('login.html')
     except Exception as e:
+        logger.error(f"Error in index route: {str(e)}")
         return f"""
         <h1>Index Error</h1>
         <p><strong>Error:</strong> {str(e)}</p>
@@ -960,33 +982,6 @@ def log_member_activity(member_id, activity_type, amount=None, details=None):
 #     id='calculate_daily_stats',
 #     name='Calculate Daily Stats'
 # )
-
-# 데이터베이스 초기화 (테이블이 없을 때만 - 안전한 방식)
-with app.app_context():
-    try:
-        # Inspector를 사용하여 테이블 존재 확인
-        from sqlalchemy import inspect
-        inspector = inspect(db.engine)
-        existing_tables = inspector.get_table_names()
-        
-        # 필수 테이블들이 없을 때만 생성
-        required_tables = ['member', 'cid', 'admin']
-        missing_tables = [table for table in required_tables if table not in existing_tables]
-        
-        if missing_tables:
-            print(f"Missing tables detected: {missing_tables}")
-            print("Creating database tables...")
-            db.create_all()
-            print("Database tables created successfully.")
-        else:
-            print("All required tables exist. Skipping table creation.")
-            
-    except Exception as e:
-        print(f"Database initialization error: {e}")
-        # 테이블 확인 실패 시에만 생성 시도
-        print("Attempting to create tables...")
-        db.create_all()
-        print("Database tables created.")
 
 @app.route('/api/test/tables', methods=['GET'])
 def test_tables():
