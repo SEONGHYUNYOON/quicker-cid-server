@@ -11,19 +11,16 @@ class Config:
 class ProductionConfig(Config):
     DEBUG = False
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'quicker-cid-server-secret-key-production-2024'
-    # Render에서 자동으로 제공하는 PostgreSQL URL 사용
+    
+    # Get database URL from environment
     database_url = os.environ.get('DATABASE_URL')
     if database_url:
-        print(f"DATABASE_URL found: {database_url[:50]}...")  # 로그용 (보안상 일부만)
+        # Convert postgres:// to postgresql:// for SQLAlchemy
         if database_url.startswith('postgres://'):
-            # Render의 postgres:// URL을 postgresql://로 변경
             database_url = database_url.replace('postgres://', 'postgresql://', 1)
-            print("Converted postgres:// to postgresql://")
         SQLALCHEMY_DATABASE_URI = database_url
-        print("Using PostgreSQL database")
     else:
-        print("No DATABASE_URL found, falling back to SQLite")
-        SQLALCHEMY_DATABASE_URI = 'sqlite:///quicker.db'
+        raise ValueError("DATABASE_URL environment variable is not set")
     
 class DevelopmentConfig(Config):
     DEBUG = True
